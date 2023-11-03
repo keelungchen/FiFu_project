@@ -20,7 +20,7 @@ library(cowplot)
 
 ```{r data import, echo=TRUE, results='hide', include=FALSE}
 ####DATA####
-pa_data <- read_csv("OL_PA_all.csv")
+pa_data <- read_csv("data/OL_PA_all.csv")
 
 ####CLASS CHECK####
 pa_data$Shape_Length <- as.numeric(pa_data$Shape_Length)
