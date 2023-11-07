@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
+```{r, include=FALSE}
 ####LIBRARIES####
 library(tidyverse)
 library(readr)
@@ -18,7 +18,7 @@ library(cowplot)
 ```
 
 
-```{r data import, echo=TRUE, results='hide', include=FALSE}
+```{r data import, echo=FALSE}
 ####DATA####
 pa_data <- read_csv("data/OL_PA_all.csv")
 
@@ -50,7 +50,7 @@ summary(pa_data)
 ```
 
 
-```{r}
+```{r, include=FALSE}
 ##########plot definition of J IA CA
 
 # find the half total area of adult
@@ -151,10 +151,10 @@ plot(log10(pa_data$Shape_Area), log10((pa_data$circ)),
 abline(v=log10(pi*0.03^2))#check the standard of adult
 abline(h=log10(cutoff_circ)) #check the standard of compact adult
 dev.off()
-
 ```
+![Fig0](Figs/SizeClass_scatter.png)
 
-
+# Check composition change with survey times
 ```{r plot J IA CA composition}
 #####plot composition difference in 3 survey times
 #clean data
@@ -179,11 +179,11 @@ for (i in 1:3) {
 fig1 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/times_proportion_fillbox.png", plot = fig1, width = 6, height = 5.3, dpi = 100)
 dev.off()
-fig1
 ```
+![Fig1](Figs/times_proportion_fillbox.png)
 
 
-```{r}
+```{r, include=FALSE}
 ############Analyze the Fates of colonies###################
 ####Add Fate (G,S) and their sa_change####
 pa_data_GS <- data.frame()
@@ -393,15 +393,21 @@ pa_data_done$rate_ad <-  ifelse(pa_data_done$Survey_times == 1 & pa_data_done$Pl
 
 ```
 
+# Summarize the finalized data
+```{r}
+summary(pa_data_done)
+```
+
+
+# Check normal distributin of multiplier
 ```{r}
 ####plot histgram to check normal distributin
 pa_data_done_12 <-  filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
 hist(log(pa_data_done_12$rate_ad))
-
 ```
 
 
-```{r plot}
+```{r plot, include=FALSE}
 ####Plot pa_ratio and changing rate D=0 G>1#####Filter date 
 # Define fate Growth and Death in discrete (G=1, D=0)
 pa_data_done$Discrete_change <- ifelse(pa_data_done$Fate == "D", 0, ifelse(pa_data_done$Fate != "D", 1, NA))
@@ -454,11 +460,11 @@ for (i in 1:3) {
 fig2 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Discrete_logClass_lm.png", plot = fig2, width = 6.5, height = 4.5, dpi = 100)
 dev.off()
-fig2
-
 
 ```
 
+
+## Plot GLM and calculate psudo-R square
 ```{r}
 #####Plot all Fate vs non-Fate lm#########
 combined_list <- list()
@@ -520,10 +526,12 @@ combined_list <- append(combined_list, plot_list)
 fig2_1 <- plot_grid(combined_list[[1]],combined_list[[2]],combined_list[[3]],combined_list[[4]],combined_list[[5]],combined_list[[6]],combined_list[[7]],combined_list[[8]],combined_list[[9]],combined_list[[10]],combined_list[[11]],combined_list[[12]],combined_list[[13]],combined_list[[14]],combined_list[[15]],align="h",nrow = 5)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Discrete_logClass_lm_all.png", plot = fig2_1, width = 6.5, height = 12, dpi = 100)
 dev.off()
-#fig2_1
 
 ```
+![Fig2](Figs/Discrete_logClass_lm_all.png)
 
+
+# Summarize binomial GLM results
 ```{r}
 ##### Manually loop trhough fate to get GLM result
 # Define the fates 
@@ -546,7 +554,7 @@ summary(model_p)
 ```
 
 
-
+# Compare areal proportion differences
 ```{r plot the proportin of Fate from J, IA, CA}
 # Clean data
 pa_data_done_12 <- filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
@@ -594,7 +602,7 @@ for (i in 1:3) {
   }
 fig3_1 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Proportion_Fates_Revers.png", plot = fig3_1, width = 8.8, height = 5.3, dpi = 100)
-fig3_1
+#fig3_1
 
 # Plot the proportin of Fate from J, IA, CA. Reverse X Y without J
 pa_data_done_12 <- filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
@@ -620,12 +628,11 @@ for (i in 1:3) {
   }
 fig3_2 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Proportion_Fates_Revers_NoJ.png", plot = fig3_2, width = 10.5, height = 3.8, dpi = 100)
-fig3_2
-
-
 ```
+![Fig3](Figs/Proportion_Fates_Revers_NoJ.png)
 
 
+# Compare multiplier difference
 ```{r}
 ### Plot mean multiplier difference
 # Clean data, remove J due to all the same
@@ -660,11 +667,11 @@ for (i in 1:3) {
 
 fig4_1 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Multiplier_Fates_boxplot_NoJ.png", plot = fig4_1, width = 10.5, height = 3.8, dpi = 100)
-fig4_1
 
 ```
+![Fig4](Figs/Multiplier_Fates_boxplot_NoJ.png)
 
-
+# Compare the difference of three methods
 ```{r}
 ### Plot method comparison
 method_compare <- read_csv("data/Method_compare.csv")
@@ -688,7 +695,7 @@ for (i in 1:3) {
 
 fig5_1 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Method_compare_m.png", plot = fig5_1, width = 17.3, height = 3.6, dpi = 100)
-fig5_1
+#fig5_1
 
 
 # Plot the Areal proportion difference in three methods
@@ -704,7 +711,7 @@ for (i in 1:3) {
 
 fig5_2 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Method_compare_a.png", plot = fig5_2, width = 17.3, height = 3.6, dpi = 100)
-fig5_2
+#fig5_2
 
 # Plot the Areal proportion X multiplier difference in three methods
 method_compare$aXm <- NA
@@ -721,13 +728,12 @@ for (i in 1:3) {
 
 fig5_3 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
 ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Method_compare_aXm.png", plot = fig5_3, width = 16, height = 5, dpi = 100)
-fig5_3
 
 ```
+![Fig5](Figs/Method_compare_aXm.png)
 
 
-
-```{r}
+```{r, include=FALSE}
 ### Calculate dynamics between three stages ###
 
 dynamics_df <- data.frame()
@@ -762,7 +768,7 @@ for (col_name in columns_to_loop) {
               if (current_id == pa_data_done_2$ID[i]){ # check the ID is match
                 morpho_dynamic$dynamic[j] <- paste0(pa_data_done_1$Fate[j],column_values_2[i])
                 morpho_dynamic$stage[j] <- as.character(column_values_1[j])
-                morpho_dynamic$change_rate[j] <- pa_data_done_1$change_rate[j]
+                morpho_dynamic$rate_ad[j] <- pa_data_done_1$rate_ad[j]
                 morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
                 morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
               } 
@@ -773,7 +779,7 @@ for (col_name in columns_to_loop) {
               if (current_id %in% Fu_list){
                 morpho_dynamic$dynamic[j] <- paste0(pa_data_done_1$Fate[j],column_values_2[i])
                 morpho_dynamic$stage[j] <- as.character(column_values_1[j])
-                morpho_dynamic$change_rate[j] <- pa_data_done_1$change_rate[j]
+                morpho_dynamic$rate_ad[j] <- pa_data_done_1$rate_ad[j]
                 morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
                 morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
               }
@@ -784,14 +790,14 @@ for (col_name in columns_to_loop) {
                 morpho_dynamic$stage[j] <- as.character(column_values_1[j])
                 indices <- which(pa_data_done_2$Source %in% pa_data_done_1$ID[j])
                 Fi_total <- sum(pa_data_done_2$Shape_Area[indices])
-                morpho_dynamic$change_rate[j] <- pa_data_done_1$change_rate[j]
+                morpho_dynamic$rate_ad[j] <- pa_data_done_1$rate_ad[j]
                 morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
                 morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
               }
             } else if (pa_data_done_1$Fate[j] == "D") {
             morpho_dynamic$dynamic[j] <- "D"
             morpho_dynamic$stage[j] <- as.character(column_values_1[j])
-            morpho_dynamic$change_rate[j] <- pa_data_done_1$change_rate[j]
+            morpho_dynamic$rate_ad[j] <- pa_data_done_1$rate_ad[j]
             morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
             morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
           }
@@ -816,16 +822,13 @@ for (col_name in columns_to_loop) {
 
 
 
-
+# revising the old code, haven't finished (want to calculate three methods in a loop)
 ```{r}
 ########### Calculate multiplier
 
 # Define the custom order
 custom_order_1 <- c("GJ","GM","GL","SJ","SM","SL","FiJ","FiM","FiL","FuJ","FuM","FuL","D")
 custom_order_2 <- c("GJ","GI","GC","SJ","SI","SC","FiJ","FiI","FiC","FuJ","FuI","FuC","D")
-
-
-
 
 
 ### Calculate mean change rate (multiplier) in each stage
@@ -843,13 +846,25 @@ change_ratio_J$dynamic <- factor(change_ratio_J$dynamic, levels = custom_order_1
 change_ratio_J <- change_ratio_J %>%
   arrange(dynamic)
 
-
 change_ratio_IA <- dynamics_df_IA %>%
   group_by(dynamic) %>%
   summarize(mean_x = mean(rate_ad), count = n())
+# Convert the Name column to a factor with the custom order
+change_ratio_IA$dynamic <- factor(change_ratio_IA$dynamic, levels = custom_order_1)
+# Arrange the tibble based on the custom order
+change_ratio_IA <- change_ratio_IA %>%
+  arrange(dynamic)
 
 change_ratio_CA <- dynamics_df_CA %>%
   group_by(dynamic) %>%
   summarize(mean_x = mean(rate_ad), count = n())
+# Convert the Name column to a factor with the custom order
+change_ratio_CA$dynamic <- factor(change_ratio_CA$dynamic, levels = custom_order_1)
+# Arrange the tibble based on the custom order
+change_ratio_CA <- change_ratio_CA %>%
+  arrange(dynamic)
 
+change_ratio_J
+change_ratio_IA
+change_ratio_CA
 ```
