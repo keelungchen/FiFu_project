@@ -393,9 +393,10 @@ pa_data_done$rate_ad <-  ifelse(pa_data_done$Survey_times == 1 & pa_data_done$Pl
 
 ```
 
-# Summarize the finalized data
+# Summarize the finalized data and export the finalized data
 ```{r}
 summary(pa_data_done)
+write.csv(pa_data_done, file = "C:/Users/keelu/R/FiFu_analysis/data/pa_data_done.csv")
 ```
 
 
@@ -403,7 +404,12 @@ summary(pa_data_done)
 ```{r}
 ####plot histgram to check normal distributin
 pa_data_done_12 <-  filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
-hist(log(pa_data_done_12$rate_ad))
+hist(pa_data_done_12$rate_ad, breaks = 30)
+
+rate_ad_adjusted <- pa_data_done_12$rate_ad
+rate_ad_adjusted[rate_ad_adjusted == 0] <- .Machine$double.eps
+qqnorm(rate_ad_adjusted)
+qqline(rate_ad_adjusted)
 ```
 
 
@@ -536,7 +542,7 @@ dev.off()
 ##### Manually loop trhough fate to get GLM result
 # Define the fates 
 Fate_loop <- c("D","G","S","Fi","Fu")
-Fates <- "Fu"
+Fates <- "D"
 pa_data_done$Discrete_change <- ifelse(pa_data_done$Fate == Fates, 1, ifelse(pa_data_done$Fate != Fates, 0, NA))
 pa_data_done_12 <- filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
 #pa_data_done_12 <- filter(pa_data_done_12, size_class != "J") #Exclude Juvenile
