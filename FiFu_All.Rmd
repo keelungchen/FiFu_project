@@ -407,9 +407,10 @@ pa_data_done_12 <-  filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
 hist(pa_data_done_12$rate_ad, breaks = 30)
 
 rate_ad_adjusted <- pa_data_done_12$rate_ad
-rate_ad_adjusted[rate_ad_adjusted == 0] <- .Machine$double.eps
+rate_ad_adjusted[rate_ad_adjusted == 0] <- .Machine$double.eps # replace zero to very samll value
 qqnorm(rate_ad_adjusted)
 qqline(rate_ad_adjusted)
+shapiro.test(rate_ad_adjusted) # Shapiro-Wilk normality test
 ```
 
 
