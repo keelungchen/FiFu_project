@@ -739,6 +739,48 @@ ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Method_compare_aXm.png", plot = fig5
 ```
 ![Fig5](Figs/Method_compare_aXm.png)
 
+```{r}
+########## Relation between size and multiplier
+
+# Define the fates 
+Fate_loop <- c("G","S","Fi","Fu")
+
+# Calculate R square and slope
+R_square <- numeric(length(Fate_loop))
+multiplier_slope <- numeric(length(Fate_loop))
+
+for (i in seq_along(Fate_loop)) {
+  df <- filter(pa_data_done, Fate == Fate_loop[i])
+  model <- glm(rate_ad ~ log10(Shape_Area), data = df)
+  R_square[i] <- with(summary(model), 1 - deviance/null.deviance) # Calculate McFadden's R-squared
+  multiplier_slope[i] <- coef(model)[2] # Calculate slope
+}
+
+R_square <- round(R_square, digits = 2)
+multiplier_slope <- round(multiplier_slope, digits = 2)
+
+# plot multiplier
+plot_list <- list()
+
+for (i in seq_along(Fate_loop)) {
+  df <- filter(pa_data_done, Fate == Fate_loop[i])
+  p <- ggplot(data = df, aes(log10(Shape_Area), rate_ad))+
+      geom_point(shape=21)+
+      geom_smooth(method="glm")+
+      ylab(paste(Fate_loop[i],"Multiplier"))+ 
+      geom_text(label=paste("R² =", R_square[i]), 
+                x=Inf, y=Inf, hjust=1.1, vjust=1.1)
+  plot_list[[i]] <- p
+}
+
+# 使用cowplot套件繪製多個圖形
+fig6_1 <- plot_grid(plot_list[[1]], plot_list[[2]], plot_list[[3]], plot_list[[4]],
+                    align="h", labels=c("A","B","C","D"), nrow = 4)
+ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/multiplier_size_R2.png", plot = fig6_1, width = 3, height = 8, dpi = 100)
+fig6_1
+```
+
+
 
 ```{r, include=FALSE}
 ### Calculate dynamics between three stages ###
@@ -827,6 +869,74 @@ for (col_name in columns_to_loop) {
 } #loop column
 ```
 
+```{r}
+############ check the differences of multipliers between dynamics
+dynamics_df$dynamic <- as.factor(dynamics_df$dynamic)
+dynamics_df$stage <- as.factor(dynamics_df$stage)
+summary(dynamics_df)
+write.csv(dynamics_df, file = "C:/Users/keelu/R/FiFu_analysis/data/dynamics_df.csv")
+
+result <- dynamics_df %>%
+  group_by(stage, dynamic) %>%
+  summarise(
+    Means = mean(rate_ad),
+    SDs = sd(rate_ad), count = n()
+  )
+
+# create gorup variable
+result$group <- paste(result$stage, result$dynamic, sep="")
+
+###### Fusion vs Growth
+
+# filter the groups that I want to compare
+selected_groups <- result %>% 
+  filter(group %in% c("JFuM", "JGM", "JFuL", "JGL", "MFuL", "MGL"))
+# set the levels of factors
+selected_groups$group <- factor(selected_groups$group, 
+                                levels = c("JFuM", "JGM", "JFuL", "JGL", "MFuL", "MGL"))
+# set the comparing groups
+selected_groups$gap_group <- factor(
+  ifelse(selected_groups$group %in% c("JFuM", "JGM"), "J to M",
+         ifelse(selected_groups$group %in% c("JFuL", "JGL"), "J to L", "M to L")),
+  levels = c("J to M","J to L","M to L")
+)
+
+# compare Fu vs growth effect
+fig7_1 <- ggplot(selected_groups, aes(x=group, y=Means, fill=group)) +
+  geom_bar(stat="identity", position=position_dodge(width=0.8)) +
+  facet_grid(~ gap_group, scales = "free_x", space = "free_x") +
+  geom_errorbar(aes(ymin = Means - SDs, ymax = Means + SDs), position = position_dodge(width = 0.9), width = 0.25) +
+  labs(title="Fusion vs Growth", x="Dynamics", y="Multiplier") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Fusion_vs_Growth.png", plot = fig7_1, width = 5.3, height = 6, dpi = 100)
+
+
+####### Fission vs shrinkage
+
+# filter the groups that I want to compare
+selected_groups <- result %>% 
+  filter(group %in% c("MFiJ", "MSJ", "LFiJ", "LSJ", "LFiM", "LSM"))
+# set the levels of factors
+selected_groups$group <- factor(selected_groups$group, 
+                                levels = c("MFiJ", "MSJ", "LFiJ", "LSJ", "LFiM", "LSM"))
+# set the comparing groups
+selected_groups$gap_group <- factor(
+  ifelse(selected_groups$group %in% c("MFiJ", "MSJ"), "M to J",
+         ifelse(selected_groups$group %in% c("LFiJ", "LSJ"), "L to J", "L to M")),
+  levels = c("M to J","L to J","L to M")
+)
+
+# compare Fu vs growth effect
+fig7_2 <- ggplot(selected_groups, aes(x=group, y=Means, fill=group)) +
+  geom_bar(stat="identity", position=position_dodge(width=0.8)) +
+  facet_grid(~ gap_group, scales = "free_x", space = "free_x") +
+  geom_errorbar(aes(ymin = Means - SDs, ymax = Means + SDs), position = position_dodge(width = 0.9), width = 0.25) +
+  labs(title="Fission vs Shrinkage", x="Dynamics", y="Multiplier") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+fig7_2
+ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Fission_vs_Shrinkage.png", plot = fig7_2, width = 5.3, height = 6, dpi = 100)
+```
 
 
 # revising the old code, haven't finished (want to calculate three methods in a loop)
