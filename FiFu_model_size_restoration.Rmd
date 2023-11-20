@@ -1,0 +1,264 @@
+---
+title: "long-term growth and composition"
+author: "Yan"
+date: "2023-11-20"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Import data and lirabry 
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(matlib)
+
+# Read the CSV files
+a <- read.csv("data/areal_size_even.csv", row.names=1)
+m <- read.csv("data/multiplier_size_even_log.csv", row.names=1)
+
+# Extracting values from the 'a' data frame
+# areal percentage
+JGJ <- a["GJ", "J"]
+JGI <- a["GI", "J"]
+JGC <- a["GC", "J"]
+JSJ <- a["SJ", "J"]
+JSI <- a["SI", "J"]
+JSC <- a["SC", "J"]
+JFiJ <- a["FiJ", "J"]
+JFiI <- a["FiI", "J"]
+JFiC <- a["FiC", "J"]
+JFuJ <- a["FuJ", "J"]
+JFuI <- a["FuI", "J"]
+JFuC <- a["FuC", "J"]
+JMJ <- a["mort", "J"]
+JRJ <- a["rec", "J"]
+
+IGJ <- a["GJ", "I"]
+IGI <- a["GI", "I"]
+IGC <- a["GC", "I"]
+ISJ <- a["SJ", "I"]
+ISI <- a["SI", "I"]
+ISC <- a["SC", "I"]
+IFiJ <- a["FiJ", "I"]
+IFiI <- a["FiI", "I"]
+IFiC <- a["FiC", "I"]
+IFuJ <- a["FuJ", "I"]
+IFuI <- a["FuI", "I"]
+IFuC <- a["FuC", "I"]
+IMI <- a["mort", "I"]
+IRJ <- a["rec", "I"]
+
+CGJ <- a["GJ", "C"]
+CGI <- a["GI", "C"]
+CGC <- a["GC", "C"]
+CSJ <- a["SJ", "C"]
+CSI <- a["SI", "C"]
+CSC <- a["SC", "C"]
+CFiJ <- a["FiJ", "C"]
+CFiI <- a["FiI", "C"]
+CFiC <- a["FiC", "C"]
+CFuJ <- a["FuJ", "C"]
+CFuI <- a["FuI", "C"]
+CFuC <- a["FuC", "C"]
+CMC <- a["mort", "C"]
+CRJ <- a["rec", "C"]
+
+# Extracting values from the 'm' data frame
+# multiplier
+rJGJ <- m["GJ", "J"]
+rJGI <- m["GI", "J"]
+rJGC <- m["GC", "J"]
+rJSJ <- m["SJ", "J"]
+rJSI <- m["SI", "J"]
+rJSC <- m["SC", "J"]
+rJFiJ <- m["FiJ", "J"]
+rJFiI <- m["FiI", "J"]
+rJFiC <- m["FiC", "J"]
+rJFuJ <- m["FuJ", "J"]
+rJFuI <- m["FuI", "J"]
+rJFuC <- m["FuC", "J"]
+rJMJ <- m["mort", "J"]
+rJRJ <- m["R", "J"]
+
+rIGJ <- m["GJ", "I"]
+rIGI <- m["GI", "I"]
+rIGC <- m["GC", "I"]
+rISJ <- m["SJ", "I"]
+rISI <- m["SI", "I"]
+rISC <- m["SC", "I"]
+rIFiJ <- m["FiJ", "I"]
+rIFiI <- m["FiI", "I"]
+rIFiC <- m["FiC", "I"]
+rIFuJ <- m["FuJ", "I"]
+rIFuI <- m["FuI", "I"]
+rIFuC <- m["FuC", "I"]
+rIMI <- m["mort", "I"]
+rIRJ <- m["rec", "I"]
+
+rCGJ <- m["GJ", "C"]
+rCGI <- m["GI", "C"]
+rCGC <- m["GC", "C"]
+rCSJ <- m["SJ", "C"]
+rCSI <- m["SI", "C"]
+rCSC <- m["SC", "C"]
+rCFiJ <- m["FiJ", "C"]
+rCFiI <- m["FiI", "C"]
+rCFiC <- m["FiC", "C"]
+rCFuJ <- m["FuJ", "C"]
+rCFuI <- m["FuI", "C"]
+rCFuC <- m["FuC", "C"]
+rCMC <- m["mort", "C"]
+rCRJ <- m["rec", "C"]
+```
+
+```{r}
+# calculate Transition matrix
+
+# Fate of Juvs
+mJJ <- JGJ*rJGJ + JSJ*rJSJ + JFiJ*rJFiJ + JFuJ*rJFuJ
+mJI <- JGI*rJGI + JSI*rJSI + JFuI*rJFuI + JFiI*rJFiI
+mJC <- JGC*rJGC + JSC*rJSC + JFiC*rJFiC + JFuC*rJFuC
+
+# Fate of irregular adults 
+mIJ <- ISJ*rISJ + IFuJ*rIFuJ + IFiJ*rIFiJ + IRJ*rIRJ
+mII <- IGI*rIGI + ISI*rISI + IFuI*rIFuI + IFiI*rIFiI
+mIC <- IGC*rIGC + ISC*rISC + IFuC*rIFuC + IFiC*rIFiC
+
+# Fate of compact adults 
+mCJ <- CSJ*rCSJ + CFiJ*rCFiJ + CFuJ*rCFuJ + CRJ*rCRJ
+mCI <- CGI*rCGI + CSI*rCSI + CFuI*rCFuI + CFiI*rCFiI
+mCC <- CGC*rCGC + CSC*rCSC + CFuC*rCFuC + CFiC*rCFiC
+
+# Transition matrix
+mx_L <- matrix(c(mJJ, mIJ, mCJ, 
+              mJI, mII, mCI, 
+              mJC, mIC, mCC), 3, 3, byrow=TRUE)
+
+# Print the matrix
+print(mx_L)
+```
+
+```{r}
+# plot long-term growth rate change with increasing proportion of fragmentation
+source("lambda_function_restoration.R")
+
+# Set the fragmentation quality
+rCHJ = 0.6
+rIHJ = 0.6
+
+# Initialize fragmentation proportion
+IHJ = 0
+CHJ = 0
+
+
+# Set plot steps and changing rate
+start <- 0
+stop <- 1  # Fragment proportion of adults 1 = 100%
+steps <- 100
+
+adjust_vals <- seq(from = start, to = stop, length.out = steps)
+size <- length(adjust_vals)
+
+Lamda_fi <- numeric(length = size)
+
+for (i in 1:size) {
+  Lamda_fi[i] <- Mod(lamda_fi(adjust_vals[i]))  # Use Mod() to get the magnitude of complex numbers
+}
+
+# Create a data frame for plotting
+df <- data.frame(FragmentationProportion = adjust_vals, Lamda = Lamda_fi)
+
+# Plotting
+ggplot(data = df, aes(x = FragmentationProportion, y = Lamda)) +
+  geom_line(color = 'orchid', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
+  ggtitle("Lambda change with Fragmentation proportion") +
+  xlab("Fragmentation proportion") +
+  ylab("Lambda") +
+  theme_minimal() +
+  theme(text = element_text(size = 18))
+
+# Uncomment the next line to save the plot
+#ggsave("./Figure/fig_Nofu_100.png", dpi = 300, width = 10, height = 8)
+```
+
+# Find maximum grwth rate when fragmentation increasing
+```{r}
+
+source("lambda_function_restoration.R")
+
+# Set fragmentation rate
+frag_rate_start <- 0.3
+frag_rate_stop <- 0.9
+frag_steps <- 100
+frag_vals <- seq(from = frag_rate_start, to = frag_rate_stop, length.out = frag_steps)
+
+# Initialize dataframe to store the result
+df_frag_max <- data.frame(frag_rate = numeric(), max_prop = numeric(), max_lambda = numeric())
+
+for (j in frag_vals) {
+  
+# Set the fragmentation quality
+rCHJ = j
+rIHJ = j
+# Initialize fragmentation proportion
+IHJ = 0
+CHJ = 0
+
+# Set plot steps and changing rate
+start <- 0
+stop <- 1  # Fragment proportion of adults 1 = 100%
+steps <- 100
+
+adjust_vals <- seq(from = start, to = stop, length.out = steps)
+size <- length(adjust_vals)
+
+Lamda_fi <- numeric(length = size)
+
+for (i in 1:size) {
+  Lamda_fi[i] <- Mod(lamda_fi(adjust_vals[i]))  # Use Mod() to get the magnitude of complex numbers
+}
+
+# Create a data frame for plotting
+df <- data.frame(Prop = adjust_vals, Lamda = Lamda_fi)
+
+
+# Find the maximum value in the column
+max_value <- max(df$Lamda, na.rm = TRUE)
+
+initial_lambda <- lamda_fi(0)
+
+# Find the row number of the maximum value
+max_index <- which.max(df$Lamda)
+# Find maximum fragmentation proportion
+max_prop <- df$Prop[max_index]
+
+# Put results into dataframe
+df_frag_max <- rbind(df_frag_max, data.frame(frag_rate = j, max_prop = max_prop, max_lambda = max_value))
+}
+
+
+# Plotting
+fig_2 <- ggplot(data = df_frag_max, aes(x = frag_rate , y = max_prop )) +
+  geom_line(color = 'black', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
+  ggtitle("Optimal area of fragamentation with Fragmentation rate") +
+  xlab("Fragmentation rate") +
+  ylab("Optimal areal propotion") +
+  theme_minimal() +
+  theme(text = element_text(size = 18))
+ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Optimal_area_rate.png", plot = fig_2, width = 8.1, height = 5.7, dpi = 100)
+```
+
+```{r}
+ggplot(data = df_frag_max, aes(x = max_prop , y = max_lambda )) +
+  geom_line(color = 'black', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
+  ggtitle("Optimal area of fragamentation with Fragmentation rate") +
+  xlab("Fragmentation rate") +
+  ylab("Optimal areal propotion") +
+  theme_minimal() +
+  theme(text = element_text(size = 18))
+```
+
+

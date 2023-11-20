@@ -997,7 +997,6 @@ ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Fission_vs_Shrinkage.png", plot = fi
 
 # Define the custom order
 custom_order_1 <- c("GJ","GM","GL","SJ","SM","SL","FiJ","FiM","FiL","FuJ","FuM","FuL","D")
-custom_order_2 <- c("GJ","GI","GC","SJ","SI","SC","FiJ","FiI","FiC","FuJ","FuI","FuC","D")
 
 
 ### Calculate mean change rate (multiplier) in each stage
@@ -1008,7 +1007,7 @@ dynamics_df_CA <- filter(dynamics_df, stage == "L")
 
 change_ratio_J <- dynamics_df_J %>%
   group_by(dynamic) %>%
-  summarize(mean_x = mean(rate_ad), count = n())
+  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
 # Convert the Name column to a factor with the custom order
 change_ratio_J$dynamic <- factor(change_ratio_J$dynamic, levels = custom_order_1)
 # Arrange the tibble based on the custom order
@@ -1017,7 +1016,7 @@ change_ratio_J <- change_ratio_J %>%
 
 change_ratio_IA <- dynamics_df_IA %>%
   group_by(dynamic) %>%
-  summarize(mean_x = mean(rate_ad), count = n())
+  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
 # Convert the Name column to a factor with the custom order
 change_ratio_IA$dynamic <- factor(change_ratio_IA$dynamic, levels = custom_order_1)
 # Arrange the tibble based on the custom order
@@ -1026,9 +1025,56 @@ change_ratio_IA <- change_ratio_IA %>%
 
 change_ratio_CA <- dynamics_df_CA %>%
   group_by(dynamic) %>%
-  summarize(mean_x = mean(rate_ad), count = n())
+  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
 # Convert the Name column to a factor with the custom order
 change_ratio_CA$dynamic <- factor(change_ratio_CA$dynamic, levels = custom_order_1)
+# Arrange the tibble based on the custom order
+change_ratio_CA <- change_ratio_CA %>%
+  arrange(dynamic)
+
+change_ratio_J
+change_ratio_IA
+change_ratio_CA
+```
+
+# Calculate multiplier for classification of P/A ratio and circularity
+```{r}
+########### Calculate multiplier
+
+# Define the custom order
+custom_order_2 <- c("GJ","GIA","GCA","SJ","SIA","SCA","FiJ","FiIA","FiCA","FuJ","FuIA","FuCA","D")
+
+data <- dynamics_df_circ # chose the data set as P/A ratio or circularity
+
+### Calculate mean change rate (multiplier) in each stage
+dynamics_df_J <- filter(data, stage == "J" )
+dynamics_df_IA <- filter(data, stage == "IA") 
+dynamics_df_CA <- filter(data, stage == "CA")
+
+
+change_ratio_J <- dynamics_df_J %>%
+  group_by(dynamic) %>%
+  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
+# Convert the Name column to a factor with the custom order
+change_ratio_J$dynamic <- factor(change_ratio_J$dynamic, levels = custom_order_2)
+# Arrange the tibble based on the custom order
+change_ratio_J <- change_ratio_J %>%
+  arrange(dynamic)
+
+change_ratio_IA <- dynamics_df_IA %>%
+  group_by(dynamic) %>%
+  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
+# Convert the Name column to a factor with the custom order
+change_ratio_IA$dynamic <- factor(change_ratio_IA$dynamic, levels = custom_order_2)
+# Arrange the tibble based on the custom order
+change_ratio_IA <- change_ratio_IA %>%
+  arrange(dynamic)
+
+change_ratio_CA <- dynamics_df_CA %>%
+  group_by(dynamic) %>%
+  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
+# Convert the Name column to a factor with the custom order
+change_ratio_CA$dynamic <- factor(change_ratio_CA$dynamic, levels = custom_order_2)
 # Arrange the tibble based on the custom order
 change_ratio_CA <- change_ratio_CA %>%
   arrange(dynamic)
