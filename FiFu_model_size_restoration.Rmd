@@ -18,7 +18,7 @@ library(matlib)
 # Read the CSV files
 a <- read.csv("data/areal_size_even.csv", row.names=1)
 m <- read.csv("data/multiplier_size_even_log.csv", row.names=1)
-a <- ad_fi_prop(2,a)
+#a <- ad_fi_prop(2,a) # adjust areal proportion in high Fi or Fu environment
 
 # Extracting values from the 'a' data frame
 # areal percentage
@@ -325,7 +325,70 @@ fig_3
 ```{r}
 # plot the optimal proportion shift in high fusion environment
 
+source("lambda_function_restoration.R")
+source("adjust_fu_proportion.R")
 
+# Set fragmentation rate
+frag_rate_start <- 0.3
+frag_rate_stop <- 0.9
+frag_steps <- 100
+frag_vals <- seq(from = frag_rate_start, to = frag_rate_stop, length.out = frag_steps)
+
+# Initialize dataframe to store the result
+df_frag_max <- data.frame(frag_rate = numeric(), max_prop = numeric(), max_lambda = numeric())
+
+for (j in frag_vals) {
+  
+# Set the fragmentation quality
+rCHJ = j
+rIHJ = j
+# Initialize fragmentation proportion
+IHJ = 0
+CHJ = 0
+
+# Set plot steps and changing rate
+start <- 0
+stop <- 1  # Fragment proportion of adults 1 = 100%
+steps <- 100
+
+adjust_vals <- seq(from = start, to = stop, length.out = steps)
+size <- length(adjust_vals)
+
+Lamda_fi <- numeric(length = size)
+
+for (i in 1:size) {
+  Lamda_fi[i] <- Mod(lamda_fi(adjust_vals[i]))  # Use Mod() to get the magnitude of complex numbers
+}
+
+# Create a data frame for plotting
+df <- data.frame(Prop = adjust_vals, Lamda = Lamda_fi)
+
+
+# Find the maximum value in the column
+max_value <- max(df$Lamda, na.rm = TRUE)
+
+initial_lambda <- lamda_fi(0)
+
+# Find the row number of the maximum value
+max_index <- which.max(df$Lamda)
+# Find maximum fragmentation proportion
+max_prop <- df$Prop[max_index]
+
+# Put results into dataframe
+df_frag_max <- rbind(df_frag_max, data.frame(frag_rate = j, max_prop = max_prop, max_lambda = max_value))
+}
+
+
+# Plotting
+fig_4 <- ggplot(data = df_frag_max, aes(x = frag_rate , y = max_prop )) +
+  geom_line(color = 'cyan', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
+  ggtitle("Optimal area of fragamentation with Fragmentation rate") +
+  xlab("Fragmentation rate") +
+  ylab("Optimal areal propotion") +
+  theme_minimal() +
+  theme(text = element_text(size = 18))
+ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/Optimal_area_rate_Fux2.png", plot = fig_4, width = 8.1, height = 5.7, dpi = 100)
+fig_4
 
 
 

@@ -1007,7 +1007,7 @@ dynamics_df_CA <- filter(dynamics_df, stage == "L")
 
 change_ratio_J <- dynamics_df_J %>%
   group_by(dynamic) %>%
-  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
+  summarize(mean_log = exp(mean(log(rate_ad))), mean = mean(rate_ad), count = n())
 # Convert the Name column to a factor with the custom order
 change_ratio_J$dynamic <- factor(change_ratio_J$dynamic, levels = custom_order_1)
 # Arrange the tibble based on the custom order
@@ -1016,7 +1016,7 @@ change_ratio_J <- change_ratio_J %>%
 
 change_ratio_IA <- dynamics_df_IA %>%
   group_by(dynamic) %>%
-  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
+  summarize(mean_log = exp(mean(log(rate_ad))), mean = mean(rate_ad), count = n())
 # Convert the Name column to a factor with the custom order
 change_ratio_IA$dynamic <- factor(change_ratio_IA$dynamic, levels = custom_order_1)
 # Arrange the tibble based on the custom order
@@ -1025,7 +1025,7 @@ change_ratio_IA <- change_ratio_IA %>%
 
 change_ratio_CA <- dynamics_df_CA %>%
   group_by(dynamic) %>%
-  summarize(mean_x = exp(mean(log(rate_ad))), count = n())
+  summarize(mean_log = exp(mean(log(rate_ad))), mean = mean(rate_ad), count = n())
 # Convert the Name column to a factor with the custom order
 change_ratio_CA$dynamic <- factor(change_ratio_CA$dynamic, levels = custom_order_1)
 # Arrange the tibble based on the custom order
