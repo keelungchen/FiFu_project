@@ -1,0 +1,415 @@
+---
+title: "Data_Finalization"
+author: "Yan"
+date: "2024-01-05"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+####LIBRARIES####
+library(tidyverse)
+library(readr)
+library(cowplot)
+```
+
+
+```{r data import, echo=FALSE}
+####DATA####
+pa_data <- read_csv("data/OL_PA_all.csv")
+
+####CLASS CHECK####
+pa_data$Shape_Length <- as.numeric(pa_data$Shape_Length)
+pa_data$Shape_Area <- as.numeric(pa_data$Shape_Area)
+pa_data$Survey_times <- as.numeric(pa_data$Survey_times)
+pa_data$Plot_ID <- as.factor(pa_data$Plot_ID)
+#pa_data$Source <- as.factor(pa_data$Source)
+pa_data$Fate <- as.factor(pa_data$Fate)
+pa_data$Recruit[is.na(pa_data$Recruit)] <- "N" #fill the data with NO recruit
+pa_data$Recruit <- as.factor(pa_data$Recruit)
+
+####Classify juvenile and adult####
+pa_data$size_class <- NA
+pa_data$size_class[pa_data$Shape_Area<=0.002827433 ] <- 'J' #size smaller than 6 cm is juvenile
+pa_data$size_class[pa_data$Shape_Area > 0.002827433] <- 'A'
+pa_data$size_class <- as.factor(pa_data$size_class)
+
+####Calculate pa_ratio####
+pa_data$pa_ratio <- pa_data$Shape_Length / pa_data$Shape_Area
+
+####Circularity####
+pa_data$Circle_Length <- sqrt(pa_data$Shape_Area / pi) * 2 * pi
+pa_data$circ <- pa_data$Circle_Length / pa_data$Shape_Length
+
+summary(pa_data)
+
+```
+
+
+```{r, include=FALSE}
+##########plot definition of J IA CA
+
+# find the half total area of adult
+half_adult_sum <- sum(pa_data$Shape_Area[pa_data$size_class != "J"]) / 2
+adult_data <- pa_data[pa_data$size_class != "J", ] #filter adult for classification
+
+
+#####Classify by Size########
+# Find cutoff Size
+adult_area <- 0
+cutoff_size <- NA
+unique_areas <- sort(unique(adult_data$Shape_Area))
+
+for (i in 1:length(unique_areas)) {
+  area_indices <- min(which(adult_data$Shape_Area == unique_areas[i])) #avoid the same Shape_area value
+  if (length(area_indices) == 1) {
+    if (adult_area < half_adult_sum) {
+      adult_area <- adult_area + adult_data$Shape_Area[area_indices]
+    } else {
+      cutoff_size <- unique_areas[i-3] #find the closest value manually...
+      break
+    }
+  } else {
+    stop("Error: Multiple values found for the same unique area.")
+  }
+}
+# Classify medium and large adult by cutoff value
+pa_data$pure_size <- NA
+pa_data$pure_size[pa_data$Shape_Area <= 0.002827433] <- "J"
+pa_data$pure_size[pa_data$Shape_Area > 0.002827433 & pa_data$Shape_Area <= cutoff_size] <- "M"
+pa_data$pure_size[pa_data$Shape_Area > 0.002827433 & pa_data$Shape_Area > cutoff_size] <- "L"
+pa_data$pure_size <- as.factor(pa_data$pure_size)
+pa_data$pure_size <- factor(pa_data$pure_size, levels = c("J","M","L"))
+
+
+#####Classify by P/A ratio########
+# find the half total area of adult
+adult_area <- 0
+cutoff_pa_ratio <- NA
+for (i in 1:length(sort(unique(pa_data$pa_ratio)))){
+  if(adult_area < half_adult_sum){
+    adult_area <- adult_area + pa_data$Shape_Area[pa_data$pa_ratio == sort(unique(pa_data$pa_ratio))[i]]
+  }else{
+    cutoff_pa_ratio <- sort(unique(pa_data$pa_ratio))[i-1] #find the closest manually...
+    break
+  }
+}
+# Classify PA ratio by cutoff value
+pa_data$size_class_pa <- NA
+pa_data$size_class_pa[pa_data$Shape_Area <= 0.002827433] <- "J"
+pa_data$size_class_pa[pa_data$Shape_Area > 0.002827433 & pa_data$pa_ratio >= cutoff_pa_ratio] <- "IA"
+pa_data$size_class_pa[pa_data$Shape_Area > 0.002827433 & pa_data$pa_ratio < cutoff_pa_ratio] <- "CA"
+pa_data$size_class_pa <- as.factor(pa_data$size_class_pa)
+pa_data$size_class_pa <- factor(pa_data$size_class_pa, levels = c("J","IA","CA"))
+
+
+#####Classify by Circularity########
+# find the half total area of adult
+adult_area <- 0
+cutoff_circ <- NA
+unique_areas <- sort(unique(adult_data$circ))
+for (i in 1:length(unique_areas)){
+  if(adult_area < half_adult_sum){
+    adult_area <- adult_area + adult_data$Shape_Area[adult_data$circ == unique_areas[i]]
+  }else{
+    cutoff_circ <- unique_areas[i-1] #make the sum of CA IA closer
+    break
+  }
+}
+
+# Classify circularity by cutoff value
+pa_data$size_class_circ <- NA
+pa_data$size_class_circ[pa_data$Shape_Area <= 0.002827433] <- "J"
+pa_data$size_class_circ[pa_data$Shape_Area > 0.002827433 & pa_data$circ <= cutoff_circ] <- "IA"
+pa_data$size_class_circ[pa_data$Shape_Area > 0.002827433 & pa_data$circ > cutoff_circ] <- "CA"
+pa_data$size_class_circ <- as.factor(pa_data$size_class_circ)
+pa_data$size_class_circ <- factor(pa_data$size_class_circ, levels = c("J","IA","CA"))
+
+
+####Plot pa_ratio with size base on morphological stages####
+png(file="C:/Users/keelu/R/FiFu_analysis/Figs/SizeClass_scatter.png",
+width=800, height=650, res=100)
+
+par(mfrow=c(1,3))
+plot(log10(pa_data$Shape_Area), log10((pa_data$Shape_Area)),
+     pch = 10,
+     col = factor(pa_data$pure_size))
+abline(v=log10(pi*0.03^2))#check the standard of adult
+abline(h=log10(cutoff_size)) #check the standard of compact adult
+plot(log10(pa_data$Shape_Area), log10((pa_data$pa_ratio)),
+     pch = 10,
+     col = factor(pa_data$size_class_pa))
+abline(v=log10(pi*0.03^2))#check the standard of adult
+abline(h=log10(cutoff_pa_ratio)) #check the standard of compact adult
+plot(log10(pa_data$Shape_Area), log10((pa_data$circ)),
+     pch = 10,
+     col = factor(pa_data$size_class_circ))
+abline(v=log10(pi*0.03^2))#check the standard of adult
+abline(h=log10(cutoff_circ)) #check the standard of compact adult
+dev.off()
+```
+![Fig0](Figs/SizeClass_scatter.png)
+
+# Check composition change with survey times
+```{r plot J IA CA composition}
+#####plot composition difference in 3 survey times
+#clean data
+df <- data.frame(pa_data$Survey_times, pa_data$pure_size, pa_data$size_class_pa, pa_data$size_class_circ) 
+colnames(df) <- c("Survey_times", "Size","P/A ratio","Circularity")
+
+plot_list <- list()
+for (i in 1:3) {
+  data <- data.frame(
+    x = df[,1],
+    y = df[,i+1]
+  )
+  p <- ggplot(data = data, aes(x = x, fill = y, na.rm = TRUE)) +
+    geom_bar(position = "fill") +
+    xlab("Survey_times") +
+    ylab("Proportion of colonies")+ 
+    guides(fill=guide_legend(title=colnames(df[i+1])))
+  plot_list[[i]] <- p
+}
+
+#plot together
+fig1 <- plot_grid(plot_list[[1]],plot_list[[2]],plot_list[[3]],align="h",labels=c("A","B","C"),nrow = 1)
+ggsave("C:/Users/keelu/R/FiFu_analysis/Figs/times_proportion_fillbox.png", plot = fig1, width = 6, height = 5.3, dpi = 100)
+dev.off()
+```
+![Fig1](Figs/times_proportion_fillbox.png)
+
+
+```{r, include=FALSE}
+############Analyze the Fates of colonies###################
+####Add Fate (G,S) and their sa_change####
+pa_data_GS <- data.frame()
+# Subset the data.frame to only include observations from the two dates of interest
+for (plot_id in c("M1", "M2", "TY3")) { # loop in sites
+  #print(plot_id)
+  for (t in 1:2) { # loop in survey times
+    #print(paste0("t=",t))
+    pa_data_subset <- pa_data[pa_data$Plot_ID == plot_id,]
+    pa_data_subset <- pa_data_subset[pa_data_subset$Survey_times == t | pa_data_subset$Survey_times == t+1, ]
+    pa_data_subset <- pa_data_subset[!(pa_data_subset$Fate %in% c("D","Fu","Fi") & pa_data_subset$Survey_times == t), ]
+    pa_data_subset <- pa_data_subset[!(pa_data_subset$Recruit == "Y"& pa_data_subset$Survey_times == t+1),] #don't calculate new colonies
+    pa_data_subset <- pa_data_subset[!(!is.na(pa_data_subset$Source) & pa_data_subset$Survey_times == t+1),]
+    
+    # Create a new data.frame to store the area change for each coral colony
+    area_change_df <- data.frame(ID = unique(pa_data_subset$ID), sa_change = NA)
+    
+    # Loop through each ID and calculate the area change between the two dates
+    for (i in 1:length(unique(pa_data_subset$ID))) {
+      #print(paste0("i=",i))
+      current_id <- unique(pa_data_subset$ID)[i]
+      current_area <- pa_data_subset[pa_data_subset$ID == current_id & pa_data_subset$Survey_times == t, "Shape_Area"]
+      future_area <- pa_data_subset[pa_data_subset$ID == current_id & pa_data_subset$Survey_times == t+1, "Shape_Area"]
+      # Check if current_area and future_area are not NA
+      if (nrow(current_area) > 0 & nrow(future_area) > 0) {
+        area_change <- future_area - current_area
+        area_change_df[i, "sa_change"] <- area_change
+      }
+    }
+    pa_data_subset <- pa_data_subset[pa_data_subset$Survey_times == t,] #only left t to merge
+    # Merge the area change data.frame back into the original data.frame using the ID variable
+    pa_data_subset$sa_change <- area_change_df$sa_change[match(pa_data_subset$ID, area_change_df$ID)]
+    pa_data_GS <- rbind(pa_data_GS, pa_data_subset)
+    }
+}
+#Calculate for growth and shrink
+pa_data_GS$Fate <- ifelse(pa_data_GS$sa_change >= 0, "G", "S")
+
+###Add sa_change of D ####
+pa_data_D <- data.frame()
+
+# Calculate sa_change
+for (plot_id in c("M1", "M2", "TY3")) {
+  for (t in 1:2) {
+    # Subset the data.frame to only include D and N colonies
+    pa_data_subset <- pa_data[pa_data$Plot_ID == plot_id,]
+    pa_data_subset <- pa_data_subset[pa_data_subset$Survey_times == t, ]
+    pa_data_subset <- pa_data_subset[pa_data_subset$Fate == "D", ]
+    pa_data_subset <- pa_data_subset[complete.cases(pa_data_subset$ID), ] # clean NA rows
+    
+    # Create a new data.frame to store the area change for each coral colony
+    area_change_df <- data.frame(ID = unique(pa_data_subset$ID), sa_change = NA)
+
+    # Loop through each ID and calculate the area change between the two dates
+    for (i in 1:length(unique(pa_data_subset$ID))) {
+      #print(paste0("i=",i))
+      current_id <- unique(pa_data_subset$ID)[i]
+      # Calculate D 
+        area_change <- 0 - pa_data_subset$Shape_Area[i] # calculate Dead sa_change
+        area_change_df[i, "sa_change"] <- area_change
+    }
+    pa_data_subset$sa_change <- area_change_df$sa_change[match(pa_data_subset$ID, area_change_df$ID)]
+    pa_data_D <- rbind(pa_data_D, pa_data_subset) #Bind subset into DN dataframe
+}
+}
+
+###Add sa_change of Fi####
+pa_data_Fi <- data.frame()
+
+for (plot_id in c("M1", "M2", "TY3")) {
+  for (t in 1:2) {
+# Subset the data.frame to only include Fi colonies
+    pa_data_subset <- pa_data[pa_data$Plot_ID == plot_id,]
+    pa_data_subset <- pa_data_subset[pa_data_subset$Survey_times == t | pa_data_subset$Survey_times == t+1, ]
+    pa_data_subset <- pa_data_subset[(pa_data_subset$Fate == "Fi" & pa_data_subset$Survey_times == t) | (!is.na(pa_data_subset$Source) & pa_data_subset$Survey_times == t+1), ]
+    pa_data_subset <- pa_data_subset[complete.cases(pa_data_subset$ID), ] # clean NA rows
+
+    pa_data_subset_1 <- pa_data_subset[pa_data_subset$Survey_times == t,] # time one data
+    pa_data_subset_2 <- pa_data_subset[pa_data_subset$Survey_times == t+1,] # time two data
+    
+    if (nrow(pa_data_subset_1) != 0){  # check there are fi colonies or not
+    # Get the ID of fission colonies
+      area_change_df <- data.frame(ID = unique(pa_data_subset_1$ID), sa_change = NA)
+    # Loop through Fi colonies dataframe
+    for (j in 1:length(unique(pa_data_subset_1$ID))) {
+      current_id_1 <- unique(pa_data_subset_1$ID)[j]
+    # Loop through each ID and calculate total Fi from t+1
+    Fi_total <- 0
+      for (i in 1:length(unique(pa_data_subset_2$ID))) {
+      #print(paste0("i=",i))
+      current_id <- unique(pa_data_subset_2$ID)[i]
+      # Calculate Fi
+      if (pa_data_subset_2$Source[i] == current_id_1) {
+      Fi_total <- Fi_total + pa_data_subset_2$Shape_Area[i] # calculate total Fi area from single colony
+      }
+    }
+      area_change <- Fi_total - pa_data_subset_1$Shape_Area[j]
+      area_change_df[j, "sa_change"] <- area_change
+    }
+    pa_data_subset_1$sa_change <- area_change_df$sa_change[match(pa_data_subset_1$ID, area_change_df$ID)]
+    pa_data_Fi <- rbind(pa_data_Fi, pa_data_subset_1) #Bind subset into Fi dataframe
+    }
+  }
+  }
+
+###Add sa_change of Fu####
+pa_data_Fu <- data.frame()
+
+for (plot_id in c("M1", "M2", "TY3")) {
+  for (t in 1:2) {
+# Subset the data.frame to only include Fu colonies
+    pa_data_subset <- pa_data[pa_data$Plot_ID == plot_id,]
+    pa_data_subset <- pa_data_subset[pa_data_subset$Survey_times == t | pa_data_subset$Survey_times == t+1, ]
+    pa_data_subset <- pa_data_subset[(pa_data_subset$Fate == "Fu" & pa_data_subset$Survey_times == t) | (!is.na(pa_data_subset$Source) & pa_data_subset$Survey_times == t+1), ]
+    pa_data_subset <- pa_data_subset[complete.cases(pa_data_subset$ID), ] # clean NA rows
+
+    pa_data_subset_1 <- pa_data_subset[pa_data_subset$Survey_times == t,] # time one data
+    pa_data_subset_1$ID <- as.numeric(pa_data_subset_1$ID)
+    pa_data_subset_2 <- pa_data_subset[pa_data_subset$Survey_times == t+1,] # time two data
+    pa_data_subset_2$Source <- as.character(pa_data_subset_2$Source)
+    pa_data_subset_2 <- pa_data_subset_2[grepl("\\+", pa_data_subset_2$Source) == TRUE,] # remove Fi
+    
+    ##Calculate total source area from subset2 first##
+    if (nrow(pa_data_subset_2) != 0){  # check there are fu colonies or not
+    # Get the ID of Fusion colonies
+      Source_total <- data.frame(ID = unique(pa_data_subset_2$ID), Source_total = NA)
+    # Loop through Time2 colonies dataframe
+    for (j in 1:length(unique(pa_data_subset_2$ID))) {
+    # break source into separate IDs
+      Fu_list <- strsplit(as.character(pa_data_subset_2$Source)[j], "\\+")[[1]] # separate numbers
+      Fu_list <- as.numeric(Fu_list)
+   # Loop through each ID and calculate total Fi from t+1
+    Fu_total <- 0
+      for (i in 1:length(unique(pa_data_subset_1$ID))) {
+      #print(paste0("i=",i))
+        if ((pa_data_subset_1$ID)[i] %in% Fu_list){ #check the Fu ID match or not
+          Fu_total <- Fu_total + pa_data_subset_1$Shape_Area[i] # calculate total Fu area 
+        } 
+    }
+      Source_total[j, "Source_total"] <- Fu_total
+    }
+      pa_data_subset_2$Source_total <- Source_total$Source_total[match(pa_data_subset_2$ID, Source_total$ID)]
+    }
+    
+    ##Calculate sa_change in subset1##
+    if (nrow(pa_data_subset_1) != 0){  # check there are fi colonies or not
+    # Get the ID of fission colonies
+      area_change_df <- data.frame(ID = unique(pa_data_subset_1$ID), sa_change = NA)
+    # Loop through Fu colonies dataframe
+    for (j in 1:length(unique(pa_data_subset_1$ID))) {
+      current_id <- unique(pa_data_subset_1$ID)[j]
+    # Loop through each ID in T2 data and find total Fu area
+      for (i in 1:length(unique(pa_data_subset_2$ID))) {
+      #print(paste0("i=",i))
+      # break source into separate IDs
+      Fu_list <- strsplit(as.character(pa_data_subset_2$Source)[i], "\\+")[[1]] # separate numbers
+      Fu_list <- as.numeric(Fu_list)
+      # Calculate Fu area change
+      if (current_id %in% Fu_list) {
+        proportion <- (pa_data_subset_1$Shape_Area[j] / pa_data_subset_2$Source_total[i])
+        area_change <- pa_data_subset_2$Shape_Area[i]*proportion - pa_data_subset_1$Shape_Area[j]
+      }
+    }
+      area_change_df[j, "sa_change"] <- area_change
+    }
+    pa_data_subset_1$sa_change <- area_change_df$sa_change[match(pa_data_subset_1$ID, area_change_df$ID)]
+    pa_data_Fu <- rbind(pa_data_Fu, pa_data_subset_1) #Bind subset into Fu dataframe
+    }
+  }
+}
+
+####Combine all of cleaned data####
+pa_data_done <- rbind(pa_data_GS,pa_data_D,pa_data_Fi,pa_data_Fu)
+
+#### Calculate changing rate
+pa_data_done$change_rate <- (pa_data_done$Shape_Area+pa_data_done$sa_change) / pa_data_done$Shape_Area
+
+
+# Bind time 3 data
+pa_data_done <- bind_rows(list(pa_data_done,pa_data[pa_data$Survey_times == 3,]))
+
+#standerdize ratio by survey time
+pa_data_done$rate_ad <-  ifelse(pa_data_done$Survey_times == 1 & pa_data_done$Plot_ID == "M1",
+                                    pa_data_done$change_rate * 12/17,
+                                    ifelse(
+                                    pa_data_done$Survey_times == 2 & pa_data_done$Plot_ID == "M1",
+                                    pa_data_done$change_rate * 12/9,
+                                    ifelse(
+                                    pa_data_done$Survey_times == 1 & pa_data_done$Plot_ID == "M2",
+                                    pa_data_done$change_rate * 12/15,
+                                    ifelse(
+                                    pa_data_done$Survey_times == 2 & pa_data_done$Plot_ID == "M2",
+                                    pa_data_done$change_rate * 12/11,
+                                    ifelse(
+                                    pa_data_done$Survey_times == 1 & pa_data_done$Plot_ID == "TY3",
+                                    pa_data_done$change_rate * 12/18,
+                                    ifelse(
+                                    pa_data_done$Survey_times == 2 & pa_data_done$Plot_ID == "TY3",
+                                    pa_data_done$change_rate * 12/8,
+                                    pa_data_done$change_rate
+                                    )
+                                    )
+                                    )
+                                    )
+                                    )
+)
+
+```
+
+# Summarize the finalized data and export the finalized data
+```{r}
+summary(pa_data_done)
+write.csv(pa_data_done, file = "C:/Users/keelu/R/FiFu_analysis/data/pa_data_done.csv")
+```
+
+
+# Check normal distributin of multiplier
+```{r}
+####plot histgram to check normal distributin
+pa_data_done_12 <-  filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
+hist(pa_data_done_12$rate_ad, breaks = 30)
+
+rate_ad_adjusted <- pa_data_done_12$rate_ad
+rate_ad_adjusted[rate_ad_adjusted == 0] <- .Machine$double.eps # replace zero to very samll value
+qqnorm(rate_ad_adjusted)
+qqline(rate_ad_adjusted)
+shapiro.test(rate_ad_adjusted) # Shapiro-Wilk normality test
+```
+

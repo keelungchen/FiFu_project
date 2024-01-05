@@ -424,14 +424,14 @@ pa_data_done_12 = filter(pa_data_done, Survey_times == 1 | Survey_times == 2)
 df <- data.frame(pa_data_done_12$Discrete_change, pa_data_done_12$Shape_Area, pa_data_done_12$pa_ratio, pa_data_done_12$circ) 
 colnames(df) <- c("Growth", "Size","PA_ratio","Circularity")
 
-model <- glm(df$Growth ~ df$Size * df$Circularity, data = df, family = binomial)
+model <- glm(df$Growth ~ df$Size + df$Circularity, data = df, family = binomial)
 summary(model)
 with(summary(model), 1 - deviance/null.deviance) # Calculate McFadden's R-squared
 #summary(model)$coefficients # Extract the results
 
 # Calculate R square
 R_square <- list()
-for (i in 1:3) {
+for (i in 1:1) {
   model <- glm(df[[1]] ~ log10(df[[i+1]]), family = binomial)
   R_square[i] <- with(summary(model), 1 - deviance/null.deviance) # Calculate McFadden's R-squared
 }
@@ -446,7 +446,7 @@ annotation$R_square <- R_square
 
 # Plot discrete change with size, ratio, circ
 plot_list <- list()
-for (i in 1:3) {
+for (i in 1:1) {
   data <- data.frame(
     x = df[,i+1],
     y = df[,1]
