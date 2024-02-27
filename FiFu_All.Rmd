@@ -153,6 +153,16 @@ abline(h=log10(cutoff_circ)) #check the standard of compact adult
 dev.off()
 ```
 ![Fig0](Figs/SizeClass_scatter.png)
+# size vs circ colored by p/a ratio plot
+```{r}
+ggplot(pa_data, aes(x = log10(Shape_Area), y = log10(circ), color = pa_ratio)) +
+    geom_point() +  # 添加點圖層
+    xlab("log(Size)") +  # 設置X軸標籤
+    ylab("log(Circ)") +  # 設置Y軸標籤
+    scale_color_gradient(low = "blue", high = "red") # 使用藍色到紅色的漸變   
+
+```
+
 
 # Check composition change with survey times
 ```{r plot J IA CA composition}

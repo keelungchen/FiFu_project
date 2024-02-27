@@ -1,0 +1,341 @@
+---
+title: "Matrix Model Analysis"
+author: "Yan"
+date: "2024-02-25"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+####LIBRARIES####
+library(tidyverse)
+library(readr)
+library(cowplot)
+```
+
+```{r}
+##Import data##
+
+pa_data_done <- read_csv("data/pa_data_done.csv")
+
+####CLASS CHECK####
+pa_data_done$Shape_Length <- as.numeric(pa_data_done$Shape_Length)
+pa_data_done$Shape_Area <- as.numeric(pa_data_done$Shape_Area)
+pa_data_done$Survey_times <- as.numeric(pa_data_done$Survey_times)
+pa_data_done$Plot_ID <- as.factor(pa_data_done$Plot_ID)
+pa_data_done$Fate <- as.factor(pa_data_done$Fate)
+pa_data_done$Recruit <- as.factor(pa_data_done$Recruit)
+
+# Calculate logit transform of circ
+pa_data_done$circ_logit <- log(pa_data_done$circ / (1 - pa_data_done$circ))
+pa_data_done$circ_logit <- as.numeric(pa_data_done$circ_logit)
+
+### Classify High Survival and High Fission stages by circ+size
+# find the half total area of adult
+half_adult_sum <- sum(pa_data_done$Shape_Area[pa_data_done$size_class != "J"]) / 2
+adult_data <- pa_data_done[pa_data_done$size_class != "J", ] #filter adult for classification
+
+# Find cutoff circ base on equal area
+adult_area <- 0
+cutoff_circ <- NA
+unique_areas <- sort(unique(adult_data$circ))
+for (i in 1:length(unique_areas)){
+  if(adult_area < half_adult_sum){
+    adult_area <- adult_area + adult_data$Shape_Area[adult_data$circ == unique_areas[i]]
+  }else{
+    cutoff_circ <- unique_areas[i-1] #make the sum of CA IA closer
+    break
+  }
+}
+
+# Find cutoff Size between adult stages
+adult_area <- 0
+cutoff_size_A <- NA
+unique_areas <- sort(unique(adult_data$Shape_Area))
+
+for (i in 1:length(unique_areas)) {
+  area_indices <- min(which(adult_data$Shape_Area == unique_areas[i])) #avoid the same Shape_area value
+  if (length(area_indices) == 1) {
+    if (adult_area < half_adult_sum) {
+      adult_area <- adult_area + adult_data$Shape_Area[area_indices]
+    } else {
+      cutoff_size_A <- unique_areas[i-3] #find the closest value manually...
+      break
+    }
+  } else {
+    stop("Error: Multiple values found for the same unique area.")
+  }
+}
+pa_data_done$pure_size <- factor(pa_data_done$pure_size, levels = c("J","M","L"))
+
+# Define cutoff size and circ
+cutoff_circ <- cutoff_circ
+cutoff_size <- 0.03*0.03*pi
+
+# Classify medium and large adult by cutoff value
+pa_data_done$morpho_stage <- NA
+pa_data_done$morpho_stage[pa_data_done$Shape_Area <= cutoff_size] <- "J"
+pa_data_done$morpho_stage[pa_data_done$Shape_Area > cutoff_size & pa_data_done$circ <= cutoff_circ] <- "I"
+pa_data_done$morpho_stage[pa_data_done$Shape_Area > cutoff_size & pa_data_done$circ > cutoff_circ] <- "C"
+pa_data_done$morpho_stage <- as.factor(pa_data_done$morpho_stage)
+pa_data_done$morpho_stage <- factor(pa_data_done$morpho_stage, levels = c("J","C","I"))
+
+# check total area of each stage
+J_total_area <- sum(pa_data_done$Shape_Area[pa_data_done$morpho_stage == "J"])
+I_total_area <- sum(pa_data_done$Shape_Area[pa_data_done$morpho_stage == "I"])
+C_total_area <- sum(pa_data_done$Shape_Area[pa_data_done$morpho_stage == "C"])
+M_total_area <- sum(pa_data_done$Shape_Area[pa_data_done$pure_size == "M"])
+L_total_area <- sum(pa_data_done$Shape_Area[pa_data_done$pure_size == "L"])
+
+#median(pa_data_done$circ) # compare the classification
+summary(pa_data_done$morpho_stage)
+
+# plot stage classcifiaction
+colors <- c("J" = "darkgreen", "C" = "red", "I" = "orange")
+plot(log10(pa_data_done$Shape_Area), (pa_data_done$circ),
+     pch = 10,
+     col = colors[as.character(pa_data_done$morpho_stage)])
+abline(v=log10(cutoff_size))#check the standard of adult
+abline(h=cutoff_circ) #check the standard of compact adult
+
+
+# plot stage classcifiaction
+colors <- c("J" = "darkgreen", "M" = "red", "L" = "orange")
+plot(log10(pa_data_done$Shape_Area), (pa_data_done$circ),
+     pch = 10,
+     col = colors[as.character(pa_data_done$pure_size)])
+abline(v=log10(cutoff_size))#check the standard of adult
+abline(v=log10(cutoff_size_A))#check the standard of adult
+
+```
+
+
+# calculate areal proportion and multiplier (editing)
+```{r}
+### Calculate dynamics between three stages
+
+dynamics_df <- data.frame()
+
+## Find out how many J become IA and CA
+for (plot_id in c("M1", "M2", "TY3")) {
+  for (t in 1:2) {
+#Filter date 
+pa_data_subset <- pa_data_done[pa_data_done$Plot_ID == plot_id,]
+pa_data_done_1 <- filter(pa_data_subset, Survey_times == t)
+pa_data_done_2 <- filter(pa_data_subset, Survey_times == t+1)
+
+# create a dataframe store morphological dynamic (ex. J Fu to CA = JFuCA)
+morpho_dynamic <- data.frame(ID = unique(pa_data_done_1$ID),dynamic = NA, stage = NA, change_ratio = NA)
+
+for (j in 1:length(unique(pa_data_done_1$ID))) {
+      current_id <- unique(pa_data_done_1$ID)[j]
+    # Loop through each ID in T2 data and find corresponding size class 
+      for (i in 1:length(unique(pa_data_done_2$ID))) {
+          # Combine the size class in different times and the caused fate
+          if (pa_data_done_1$Fate[j] == "S" | pa_data_done_1$Fate[j] == "G"){
+            if (current_id == pa_data_done_2$ID[i]){ # check the ID is match
+              morpho_dynamic$stage[j] <- as.character(pa_data_done_1$size_class[j])
+              morpho_dynamic$dynamic[j] <- paste0(pa_data_done_1$Fate[j],pa_data_done_2$size_class[i])
+              morpho_dynamic$change_ratio[j] <- pa_data_done_1$change_rate[j]
+              morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
+              morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
+            } 
+          } else if (pa_data_done_1$Fate[j] == "Fu"){
+      # break source into separate IDs
+      Fu_list <- strsplit(as.character(pa_data_done_2$Source)[i], "\\+")[[1]] 
+      Fu_list <- as.numeric(Fu_list)
+            if (current_id %in% Fu_list){
+              morpho_dynamic$stage[j] <- as.character(pa_data_done_1$size_class[j])
+              morpho_dynamic$dynamic[j] <- paste0(pa_data_done_1$Fate[j],pa_data_done_2$size_class[i])
+              morpho_dynamic$change_ratio[j] <- pa_data_done_1$change_rate[j]
+              morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
+              morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
+            }
+          } else if (pa_data_done_1$Fate[j] == "Fi") {
+            current_id <- as.character(current_id)
+          if (current_id == pa_data_done_2$Source[i] & !is.na(pa_data_done_2$Source[i])){ # check the ID is match
+            morpho_dynamic$stage[j] <- as.character(pa_data_done_1$size_class[j])
+              morpho_dynamic$dynamic[j] <- paste0(pa_data_done_1$Fate[j],pa_data_done_2$size_class[i])
+              indices <- which(pa_data_done_2$Source %in% pa_data_done_1$ID[j])
+              Fi_total <- sum(pa_data_done_2$Shape_Area[indices])
+              morpho_dynamic$change_ratio[j] <- pa_data_done_2$Shape_Area[i]/Fi_total*pa_data_done_1$change_rate[j]
+              morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
+              morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
+            }
+          } else if (pa_data_done_1$Fate[j] == "D") {
+            morpho_dynamic$stage[j] <- as.character(pa_data_done_1$size_class[j])
+          morpho_dynamic$dynamic[j] <- "D"
+          morpho_dynamic$change_ratio[j] <- pa_data_done_1$change_rate[j]
+          morpho_dynamic$area[j] <- pa_data_done_1$Shape_Area[j]
+          morpho_dynamic$sa_change[j] <- pa_data_done_1$sa_change[j]
+        }
+    }
+    }
+morpho_dynamic$Survey_times <- t
+morpho_dynamic$Site <- plot_id
+dynamics_df <- rbind(dynamics_df, morpho_dynamic)
+  }
+}
+
+```
+
+
+
+#Import areal proporiton and multiplier data
+```{r}
+# Read the CSV files
+a <- read.csv("data/areal_circ_even.csv", row.names=1)
+m <- read.csv("data/multiplier_circ_even.csv", row.names=1)
+
+# Extracting values from the 'a' data frame
+# areal percentage
+JGJ <- a["GJ", "J"]
+JGI <- a["GI", "J"]
+JGC <- a["GC", "J"]
+JSJ <- a["SJ", "J"]
+JSI <- a["SI", "J"]
+JSC <- a["SC", "J"]
+JFiJ <- a["FiJ", "J"]
+JFiI <- a["FiI", "J"]
+JFiC <- a["FiC", "J"]
+JFuJ <- a["FuJ", "J"]
+JFuI <- a["FuI", "J"]
+JFuC <- a["FuC", "J"]
+JMJ <- a["mort", "J"]
+JRJ <- a["rec", "J"]
+
+IGJ <- a["GJ", "I"]
+IGI <- a["GI", "I"]
+IGC <- a["GC", "I"]
+ISJ <- a["SJ", "I"]
+ISI <- a["SI", "I"]
+ISC <- a["SC", "I"]
+IFiJ <- a["FiJ", "I"]
+IFiI <- a["FiI", "I"]
+IFiC <- a["FiC", "I"]
+IFuJ <- a["FuJ", "I"]
+IFuI <- a["FuI", "I"]
+IFuC <- a["FuC", "I"]
+IMI <- a["mort", "I"]
+IRJ <- a["rec", "I"]
+
+CGJ <- a["GJ", "C"]
+CGI <- a["GI", "C"]
+CGC <- a["GC", "C"]
+CSJ <- a["SJ", "C"]
+CSI <- a["SI", "C"]
+CSC <- a["SC", "C"]
+CFiJ <- a["FiJ", "C"]
+CFiI <- a["FiI", "C"]
+CFiC <- a["FiC", "C"]
+CFuJ <- a["FuJ", "C"]
+CFuI <- a["FuI", "C"]
+CFuC <- a["FuC", "C"]
+CMC <- a["mort", "C"]
+CRJ <- a["rec", "C"]
+
+# Extracting values from the 'm' data frame
+# multiplier
+rJGJ <- m["GJ", "J"]
+rJGI <- m["GI", "J"]
+rJGC <- m["GC", "J"]
+rJSJ <- m["SJ", "J"]
+rJSI <- m["SI", "J"]
+rJSC <- m["SC", "J"]
+rJFiJ <- m["FiJ", "J"]
+rJFiI <- m["FiI", "J"]
+rJFiC <- m["FiC", "J"]
+rJFuJ <- m["FuJ", "J"]
+rJFuI <- m["FuI", "J"]
+rJFuC <- m["FuC", "J"]
+rJMJ <- m["mort", "J"]
+rJRJ <- m["R", "J"]
+
+rIGJ <- m["GJ", "I"]
+rIGI <- m["GI", "I"]
+rIGC <- m["GC", "I"]
+rISJ <- m["SJ", "I"]
+rISI <- m["SI", "I"]
+rISC <- m["SC", "I"]
+rIFiJ <- m["FiJ", "I"]
+rIFiI <- m["FiI", "I"]
+rIFiC <- m["FiC", "I"]
+rIFuJ <- m["FuJ", "I"]
+rIFuI <- m["FuI", "I"]
+rIFuC <- m["FuC", "I"]
+rIMI <- m["mort", "I"]
+rIRJ <- m["rec", "I"]
+
+rCGJ <- m["GJ", "C"]
+rCGI <- m["GI", "C"]
+rCGC <- m["GC", "C"]
+rCSJ <- m["SJ", "C"]
+rCSI <- m["SI", "C"]
+rCSC <- m["SC", "C"]
+rCFiJ <- m["FiJ", "C"]
+rCFiI <- m["FiI", "C"]
+rCFiC <- m["FiC", "C"]
+rCFuJ <- m["FuJ", "C"]
+rCFuI <- m["FuI", "C"]
+rCFuC <- m["FuC", "C"]
+rCMC <- m["mort", "C"]
+rCRJ <- m["rec", "C"]
+```
+
+```{r}
+# calculate Transition matrix
+
+# Fate of Juvs
+mJJ <- JGJ*rJGJ + JSJ*rJSJ + JFiJ*rJFiJ + JFuJ*rJFuJ
+mJI <- JGI*rJGI + JSI*rJSI + JFuI*rJFuI + JFiI*rJFiI
+mJC <- JGC*rJGC + JSC*rJSC + JFiC*rJFiC + JFuC*rJFuC
+
+# Fate of irregular adults 
+mIJ <- ISJ*rISJ + IFuJ*rIFuJ + IFiJ*rIFiJ + IRJ*rIRJ
+mII <- IGI*rIGI + ISI*rISI + IFuI*rIFuI + IFiI*rIFiI
+mIC <- IGC*rIGC + ISC*rISC + IFuC*rIFuC + IFiC*rIFiC
+
+# Fate of compact adults 
+mCJ <- CSJ*rCSJ + CFiJ*rCFiJ + CFuJ*rCFuJ + CRJ*rCRJ
+mCI <- CGI*rCGI + CSI*rCSI + CFuI*rCFuI + CFiI*rCFiI
+mCC <- CGC*rCGC + CSC*rCSC + CFuC*rCFuC + CFiC*rCFiC
+
+# Transition matrix
+mx_L <- matrix(c(mJJ, mIJ, mCJ, 
+              mJI, mII, mCI, 
+              mJC, mIC, mCC), 3, 3, byrow=TRUE)
+
+# Print the matrix
+print(round(mx_L,3))
+```
+
+
+
+```{r}
+# calculate lambda
+
+lam <- Re(eigen(mx_L)$values[1])
+# Print the matrix
+print(round(lam,2))
+
+
+# Calculate sensitivity and elasticity
+w <- eigen(mx_L)$vectors  # right eigen vectors
+v <- Conj(solve(w))    # complex conjugate of left eigen vectors
+
+#Calculate sensitivity matrix  
+senmat <- Re(v[1,] %*% t(w[,1])) 
+
+#Calculate elasticity matrix
+emat <- (1/(Re(eigen(mx_L)$values[1]))) * senmat * mx_L
+
+
+round(senmat,2) 
+round(emat,2)
+
+```
+
+

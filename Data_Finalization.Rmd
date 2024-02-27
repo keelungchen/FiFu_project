@@ -153,6 +153,15 @@ abline(h=log10(cutoff_circ)) #check the standard of compact adult
 dev.off()
 ```
 ![Fig0](Figs/SizeClass_scatter.png)
+```{r}
+# Calculate R square, size vs shape
+model_PA <- lm(log10(Shape_Area) ~ log10(pa_ratio), data = pa_data)
+model_circ <- lm(log10(Shape_Area) ~ log10(circ), data = pa_data)
+round(summary(model_PA)$r.squared,2)
+round(summary(model_circ)$r.squared,2)
+```
+
+
 
 # Check composition change with survey times
 ```{r plot J IA CA composition}
@@ -413,3 +422,77 @@ qqline(rate_ad_adjusted)
 shapiro.test(rate_ad_adjusted) # Shapiro-Wilk normality test
 ```
 
+# Check normal distributin of size
+```{r}
+####plot histgram to check normal distributin
+hist(pa_data_done$Shape_Area, breaks = 30)
+
+qqnorm(pa_data_done$Shape_Area)
+qqline(pa_data_done$Shape_Area)
+shapiro.test(pa_data_done$Shape_Area) # Shapiro-Wilk normality test
+```
+
+
+# Check normal distributin of log(size)
+```{r}
+####plot histgram to check normal distributin
+hist(log10(pa_data_done$Shape_Area), breaks = 30)
+
+qqnorm(log10(pa_data_done$Shape_Area))
+qqline(log10(pa_data_done$Shape_Area))
+shapiro.test(log10(pa_data_done$Shape_Area)) # Shapiro-Wilk normality test
+```
+
+# Check normal distributin of circ
+```{r}
+####plot histgram to check normal distributin
+hist(pa_data_done$circ, breaks = 30)
+
+qqnorm(pa_data_done$circ)
+qqline(pa_data_done$circ)
+shapiro.test(pa_data_done$circ) # Shapiro-Wilk normality test
+```
+
+# Check normal distributin of log(circ)
+```{r}
+####plot histgram to check normal distributin
+hist(log(pa_data_done$circ), breaks = 30)
+
+qqnorm(log(pa_data_done$circ))
+qqline(log(pa_data_done$circ))
+shapiro.test(log(pa_data_done$circ)) # Shapiro-Wilk normality test
+```
+
+# Check normal distributin of log(pa ratio)
+```{r}
+####plot histgram to check normal distributin
+hist(log10(pa_data_done$pa_ratio), breaks = 30)
+
+qqnorm(log10(pa_data_done$pa_ratio))
+qqline(log10(pa_data_done$pa_ratio))
+shapiro.test(log10(pa_data_done$pa_ratio)) # Shapiro-Wilk normality test
+```
+
+# Check normal distributin of logit(circ)
+```{r}
+####plot histgram to check normal distributin
+logit_circ <- log(pa_data_done$circ / (1 - pa_data_done$circ))
+hist(logit_circ, breaks = 30)
+
+qqnorm(logit_circ)
+qqline(logit_circ)
+shapiro.test(logit_circ) # Shapiro-Wilk normality test
+```
+
+# Check normal distributin of log10(rate_ad)
+```{r}
+####plot histgram to check normal distributin
+hist(log10(pa_data_done_12$rate_ad), breaks = 30)
+
+pa_data_done_12_ND <- filter(pa_data_done_12, Fate != "D")
+
+
+qqnorm(log10(pa_data_done_12_ND$rate_ad))
+qqline(log10(pa_data_done_12_ND$rate_ad))
+shapiro.test(log10(pa_data_done_12_ND$rate_ad)) # Shapiro-Wilk normality test
+```

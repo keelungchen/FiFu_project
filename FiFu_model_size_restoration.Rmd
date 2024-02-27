@@ -17,7 +17,7 @@ library(matlib)
 
 # Read the CSV files
 a <- read.csv("data/areal_size_even.csv", row.names=1)
-m <- read.csv("data/multiplier_size_even_log.csv", row.names=1)
+m <- read.csv("data/multiplier_size_even.csv", row.names=1)
 #a <- ad_fi_prop(2,a) # adjust areal proportion in high Fi or Fu environment
 
 # Extracting values from the 'a' data frame
@@ -147,8 +147,8 @@ print(mx_L)
 source("lambda_function_restoration.R")
 
 # Set the fragmentation quality
-rCHJ = 0.6
-rIHJ = 0.6
+rCHJ = 0.4
+rIHJ = 0.4
 
 # Initialize fragmentation proportion
 IHJ = 0
@@ -175,7 +175,6 @@ df <- data.frame(FragmentationProportion = adjust_vals, Lamda = Lamda_fi)
 # Plotting
 ggplot(data = df, aes(x = FragmentationProportion, y = Lamda)) +
   geom_line(color = 'orchid', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
-  ggtitle("Lambda change with Fragmentation proportion") +
   xlab("Fragmentation proportion") +
   ylab("Lambda") +
   theme_minimal() +
@@ -243,9 +242,8 @@ df_frag_max <- rbind(df_frag_max, data.frame(frag_rate = j, max_prop = max_prop,
 
 # Plotting
 fig_2 <- ggplot(data = df_frag_max, aes(x = frag_rate , y = max_prop )) +
-  geom_line(color = 'black', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
-  ggtitle("Optimal area of fragamentation with Fragmentation rate") +
-  xlab("Fragmentation rate") +
+  geom_line(color = 'gold', linewidth = 1.5) +  # Changed 'size' to 'linewidth'
+  xlab("Fragmentation multiplier") +
   ylab("Optimal areal propotion") +
   theme_minimal() +
   theme(text = element_text(size = 18))
